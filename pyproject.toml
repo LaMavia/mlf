@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "mfl"
+version = "0.1.0"
+description = ""
+authors = ["Zuzanna Surowiec <z.surowiec@millionmonkeyssoftware.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+rdkit = "^2024.3.5"
+numpy = "^2.1.3"
+pandas = "^2.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
