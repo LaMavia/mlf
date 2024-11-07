@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from rdkit import Chem, logging
 from rdkit.DataStructs import TanimotoSimilarity
 import numpy as np
@@ -10,9 +11,17 @@ logger = Logger("mlf", logging.DEBUG)
 N = 1_000
 
 
+def findBy[A](pred: Callable[[A], bool], xs: list[A]) -> A | None:
+    for x in xs:
+        if pred(x):
+            return x
+    return None
+
+
 class BankEntry:
     SKIP_CHARS = ["-", "=", "#", ".", "$", ":", "/", "\\", "+"]
     DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    MULTI_ATOMS = ["Cl", "Br"]
 
     def __init__(self, smiles: list[str], raws: list[str]):
         assert len(raws) == len(smiles) + 1
@@ -34,6 +43,9 @@ class BankEntry:
             while i < len(smile):
                 logger.debug(f"i={i}")
                 c = smile[i]
+                multi_mol = findBy(
+                    lambda m: m == smile[i : i + len(m)], BankEntry.MULTI_ATOMS
+                )
                 if c in BankEntry.SKIP_CHARS:
                     i += 1
                 elif c == "[":  # skip bracket-enclosed atoms
@@ -48,9 +60,11 @@ class BankEntry:
                             depth -= 1
                         j += 1
                     i = j
-                elif c in BankEntry.DIGITS:
+                elif c == "%" or c in BankEntry.DIGITS:
                     # find the last digit of the number
                     # to get the whole number
+                    if c == "%":
+                        i += 1
                     j = i + 1
                     while j < len(smile) and smile[j] in BankEntry.DIGITS:
                         j += 1
@@ -65,6 +79,9 @@ class BankEntry:
 
                     # skip the parsed number
                     i = j
+                elif multi_mol is not None:
+                    splittable_indices.add(i)
+                    i += len(multi_mol)
                 elif n_current_rings == 0:  # mark the index as splittable
                     splittable_indices.add(i)
                     i += 1
@@ -112,12 +129,19 @@ def calculateDistances(
     return sum_distances / (n - 1), np.mean(sum_distances) / n
 
 
-s = "[N+4]C[c]"
-m = BankEntry(smiles=[s], raws=["", ""])
-mi = max(m.splittable_indices[0])
+m = BankEntry(
+    smiles=[
+        "[Na]ClCCBr[Mg]",
+        "CCCC",
+    ],
+    raws=["", "", ""],
+)
 
-for i in sorted(m.splittable_indices[0]):
-    print(f"L={s[:i]}{' ' * (mi+1 - i)}R={s[i:]}")
+mi = max([max(indices) for indices in m.splittable_indices]) + 1
+for j, (indices, s) in enumerate(zip(m.splittable_indices, m.smiles)):
+    for i in sorted(m.splittable_indices[j]):
+        print(f"L={s[:i]}{' ' * (mi+1 - i)}R={s[i:]}")
+    print("")
 
 # def crossMolecules()
 
