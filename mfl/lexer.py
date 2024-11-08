@@ -15,12 +15,21 @@ NUM_PREF = "%"
 BRACKET_OPEN = "["
 BRACKET_CLOSE = "]"
 
+MUTABLE_LEXEMS = [ATOM]
+
 Lexem = (
     tuple[Literal[0], str, int]  # Atom(rep, rings)
     | tuple[Literal[1], str, int]  # Bond(rep, rings)
     | tuple[Literal[2], str, int]  # Num(rep)
     | tuple[Literal["(", ")"], int]  # Paren
 )
+
+
+def repOfLexem(lexem: Lexem) -> str:
+    n = len(lexem)
+    if n == 2:
+        return lexem[0]  # type: ignore
+    return lexem[1]  # type: ignore
 
 
 def findBy[A](pred: Callable[[A], bool], xs: list[A]) -> A | None:
@@ -133,9 +142,7 @@ def lex(smile: str) -> list[Lexem]:
 
 def serialize(tokens: list[Lexem]) -> str:
     acc = ""
-    for t in tokens:
-        if isinstance(t[0], int):
-            acc += t[1]  # type: ignore
-        else:
-            acc += t[0]
+    for lexem in tokens:
+        acc += repOfLexem(lexem)
+
     return acc

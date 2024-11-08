@@ -1,12 +1,19 @@
 from rdkit import Chem
-from mfl.lexer import Lexem, lex
+from mfl.lexer import MUTABLE_LEXEMS, Lexem, lex
 
 
 class BankEntry:
     def __init__(self, smiles: list[str]) -> None:
-        self.mol: list[Chem.Mol] = [Chem.MolFromSmiles(s) for s in smiles]
+        self.mols: list[Chem.Mol] = [Chem.MolFromSmiles(s) for s in smiles]
         self.lexems: list[list[Lexem]] = [lex(s) for s in smiles]
         self.splittable_indices: list[list[int]] = self._calcSplittableIndices()
+        self.mutable_indices: list[list[int]] = self._calcMutableIndices()
+
+    def _calcMutableIndices(self) -> list[list[int]]:
+        return [
+            [i for i, lexem in enumerate(lexems) if lexem[0] in MUTABLE_LEXEMS]
+            for lexems in self.lexems
+        ]
 
     def _calcSplittableIndices(self) -> list[list[int]]:
         return [

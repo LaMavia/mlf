@@ -99,31 +99,33 @@ N = 1_000
 #         return acc
 
 
-# def initBank() -> list[BankEntry]:
-#     return []
-#
-#
-# def calculateDistances(
-#     bank: list[BankEntry],
-# ) -> tuple[npt.NDArray[np.float64], np.float64]:
-#     """
-#     Takes the current bank of molecules, and returns their distances, and the average distance
-#     """
-#     n = len(bank)
-#     fingerprints = np.array(
-#         [[Chem.RDKFingerprint(mol) for mol in m.mols] for m in bank]
-#     )
-#     sum_distances = np.zeros_like(fingerprints)
-#     mol_range = range(fingerprints.shape[1])
-#
-#     for i in range(n):
-#         for j in range(i):
-#             for k in mol_range:
-#                 d = 1 - TanimotoSimilarity(fingerprints[i, k], fingerprints[j, k])
-#                 sum_distances[i, k] += d
-#                 sum_distances[j, k] += d
-#
-#     return sum_distances / (n - 1), np.mean(sum_distances) / n
+def initBank() -> list[BankEntry]:
+    return []
+
+
+def calculateDistances(
+    bank: list[BankEntry],
+) -> tuple[npt.NDArray[np.float64], np.float64]:
+    """
+    Takes the current bank of molecules, and returns their distances, and the average distance
+    """
+    n = len(bank)
+    fingerprints = np.array(
+        [[Chem.RDKFingerprint(mol) for mol in m.mols] for m in bank]
+    )
+    sum_distances = np.zeros_like(fingerprints)
+    mol_range = range(fingerprints.shape[1])
+
+    for i in range(n):
+        for j in range(i):
+            for k in mol_range:
+                d = 1 - TanimotoSimilarity(fingerprints[i, k], fingerprints[j, k])
+                sum_distances[i, k] += d
+                sum_distances[j, k] += d
+
+    return sum_distances / (n - 1), np.mean(sum_distances) / n
+
+
 #
 #
 # BankEntry.setRaws(    raws=["", "", ""])
@@ -195,9 +197,13 @@ SMILES = [
 
 m = BankEntry([SMILES[0]])
 
-for lexems, indices in zip(m.lexems, m.splittable_indices):
+for lexems, indices in zip(m.lexems, m.mutable_indices):
     for i in indices:
-        print(f"L={serialize(lexems[:i])}\t{serialize(lexems[i:])}")
+        print(f"{str(i).rjust(2, "0")}: {[lexems[i]]}")
+
+# for lexems, indices in zip(m.lexems, m.splittable_indices):
+#     for i in indices:
+#         print(f"L={serialize(lexems[:i])}\t{serialize(lexems[i:])}")
 
 # print(*lex(SMILES[0]), sep="\n")
 #
