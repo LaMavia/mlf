@@ -21,15 +21,16 @@ Lexem = (
     tuple[Literal[0], str, int]  # Atom(rep, rings)
     | tuple[Literal[1], str, int]  # Bond(rep, rings)
     | tuple[Literal[2], str, int]  # Num(rep)
-    | tuple[Literal["(", ")"], int]  # Paren
+    | tuple[Literal["(", ")"], Literal["(", ")"], int]  # Paren
 )
 
 
 def repOfLexem(lexem: Lexem) -> str:
-    n = len(lexem)
-    if n == 2:
-        return lexem[0]  # type: ignore
-    return lexem[1]  # type: ignore
+    return lexem[1]
+
+
+def typeOfLexem(lexem: Lexem):
+    return lexem[0]
 
 
 def findBy[A](pred: Callable[[A], bool], xs: list[A]) -> A | None:
@@ -129,13 +130,13 @@ def lex(smile: str) -> list[Lexem]:
             """
             Parse parentheses
             """
-            lexems.append((c, n_current_rings))
+            lexems.append((c, c, n_current_rings))
             i += 1
         elif c in ATOMS:
             lexems.append((ATOM, c, n_current_rings))
             i += 1
         else:
-            raise ValueError(f"Unexpected char: «{c}» at position {i}")
+            raise ValueError(f"Unexpected char: «{c}» at position {i} in «{smile}»")
 
     return lexems
 
