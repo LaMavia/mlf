@@ -4,6 +4,7 @@ from mfl.lexer import MUTABLE_LEXEMS, Lexem, lex
 
 class BankEntry:
     def __init__(self, smiles: list[str]) -> None:
+        self.smiles = smiles
         self.mols: list[Chem.Mol] = [Chem.MolFromSmiles(s) for s in smiles]
         if any(m is None for m in self.mols):
             raise ValueError()
