@@ -141,9 +141,9 @@ def lex(smile: str) -> list[Lexem]:
     return lexems
 
 
-def serialize(tokens: list[Lexem]) -> str:
+def serialize(lexems: list[Lexem]) -> str:
     acc = ""
-    for lexem in tokens:
+    for lexem in lexems:
         acc += repOfLexem(lexem)
 
     return acc
