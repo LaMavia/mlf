@@ -1,4 +1,4 @@
-from typing import Literal, Callable
+from typing import Iterable, Literal, Callable
 
 ATOM = 0
 BOND = 1
@@ -141,7 +141,7 @@ def lex(smile: str) -> list[Lexem]:
     return lexems
 
 
-def serialize(lexems: list[Lexem]) -> str:
+def serialize(lexems: Iterable[Lexem]) -> str:
     acc = ""
     for lexem in lexems:
         acc += repOfLexem(lexem)

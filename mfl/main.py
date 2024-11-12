@@ -1,25 +1,13 @@
-from typing import Generator
 from rdkit import Chem, logging
 from rdkit.DataStructs import TanimotoSimilarity
 import numpy as np
 import numpy.typing as npt
 from logging import Logger
-import random as rnd
 from rdkit.rdBase import DisableLog
 from itertools import islice
 
 from mfl.bank import BankEntry
-from mfl.cross import crossMolecules
-from mfl.lexer import (
-    PAREN_CLOSE,
-    PAREN_OPEN,
-    Lexem,
-    repOfLexem,
-    serialize,
-    typeOfLexem,
-)
 from mfl.mutations import removeAtom, replaceAtom
-from mfl.utils import canon
 
 logger = Logger("mlf", logging.DEBUG)
 DisableLog("rdApp.*")
@@ -71,10 +59,10 @@ def calculateDistances(
 mols = initBank()
 for i in range(len(mols)):
     m = mols[i]
-    for lexems in m.lexems:
-        print("Original: ", serialize(lexems))
-        for mutated in islice(removeAtom(lexems, temp=500), 5):
-            print(canon(serialize(mutated)))
+    print("original:", *m.smiles, sep="\n", end="\n<<<<<<\n")
+    for mutated in islice(removeAtom(m), 5):
+        print(*mutated.smiles, sep="\n")
+    print("\n")
     # for j in range(i):
     #     for m in crossMolecules(mols[i], mols[j]):
     #         ...

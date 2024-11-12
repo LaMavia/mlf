@@ -6,8 +6,10 @@ class BankEntry:
     def __init__(self, smiles: list[str]) -> None:
         self.smiles = smiles
         self.mols: list[Chem.Mol] = [Chem.MolFromSmiles(s) for s in smiles]
-        if any(m is None for m in self.mols):
-            raise ValueError()
+        for m, s in zip(self.mols, smiles, strict=True):
+            if m is None:
+                print(f"Invalid smile: {s}")
+                raise ValueError()
 
         self.lexems: list[list[Lexem]] = [lex(s) for s in smiles]
         self.splittable_indices: list[list[int]] = self._calcSplittableIndices()

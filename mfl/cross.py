@@ -17,6 +17,20 @@ def removeEmptyBranches(lexems: list[Lexem]) -> list[Lexem]:
     return lexems
 
 
+def removeAllEmptyBranches(lexems: list[Lexem]) -> list[Lexem]:
+    acc: list[Lexem] = []
+    n = len(lexems)
+    i = 0
+    while i < n:
+        current = lexems[i]
+        next_type = typeOfLexem(lexems[i + 1]) if i < n - 1 else None
+        if next_type == PAREN_CLOSE and typeOfLexem(current) == PAREN_OPEN:
+            continue
+        acc.append(current)
+
+    return acc
+
+
 def parenthesisSum(lexems: list[Lexem]) -> int:
     sum = 0
 
