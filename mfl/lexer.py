@@ -33,6 +33,10 @@ def typeOfLexem(lexem: Lexem):
     return lexem[0]
 
 
+def depthOfLexem(lexem: Lexem) -> int:
+    return lexem[2]
+
+
 def findBy[A](pred: Callable[[A], bool], xs: list[A]) -> A | None:
     for x in xs:
         if pred(x):

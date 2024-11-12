@@ -5,7 +5,7 @@ import numpy as np
 
 from mfl.bank import BankEntry
 from mfl.cross import removeEmptyBranches
-from mfl.lexer import serialize
+from mfl.lexer import ATOM, PAREN_CLOSE, PAREN_OPEN, Lexem, depthOfLexem, serialize
 from mfl.utils import isValid
 
 MAX_MUTATIONS = 30
@@ -68,7 +68,7 @@ def replaceAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
         yield BankEntry(smis)
 
 
-def removeAtom(entry: BankEntry) -> Generator[BankEntry, bool, None]:
+def removeAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
     while True:
         out_smis: list[str] = []
         for lexems, mutable_indices in zip(entry.lexems, entry.mutable_indices):
@@ -78,6 +78,40 @@ def removeAtom(entry: BankEntry) -> Generator[BankEntry, bool, None]:
                 smi = serialize(removeEmptyBranches(lexems[:i] + lexems[i + 1 :]))
                 if successful := isValid(smi):
                     out_smis.append(smi)
+                    break
+            if not successful:
+                out_smis.append(serialize(lexems))
+
+        yield BankEntry(out_smis)
+
+
+def addAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
+    BRANCHING_CHANCE = 0.5
+    MUTATION_ATOMS = ["C", "B", "N", "P", "O", "S", "Cl", "Br", "[Mg]"]
+    while True:
+        out_smis: list[str] = []
+        for lexems in entry.lexems:
+            successful = False
+            n = len(lexems)
+            for tries in range(MAX_MUTATION_TRIES):
+                i: int = np.random.randint(0, n)
+                depth = depthOfLexem(lexems[i])
+                branch = np.random.random() < BRANCHING_CHANCE
+                atom = np.random.choice(MUTATION_ATOMS)
+                mutation: list[Lexem] = (
+                    [
+                        (PAREN_OPEN, PAREN_OPEN, depth),
+                        (ATOM, atom, depth),
+                        (PAREN_CLOSE, PAREN_CLOSE, depth),
+                    ]
+                    if branch
+                    else [(ATOM, atom, depth)]
+                )
+
+                smi = serialize(lexems[:i] + mutation + lexems[i:])
+                if successful := isValid(smi):
+                    out_smis.append(smi)
+                    print(tries)
                     break
             if not successful:
                 out_smis.append(serialize(lexems))

@@ -7,7 +7,7 @@ from rdkit.rdBase import DisableLog
 from itertools import islice
 
 from mfl.bank import BankEntry
-from mfl.mutations import removeAtom, replaceAtom
+from mfl.mutations import removeAtom, replaceAtom, addAtom
 
 logger = Logger("mlf", logging.DEBUG)
 DisableLog("rdApp.*")
@@ -60,7 +60,7 @@ mols = initBank()
 for i in range(len(mols)):
     m = mols[i]
     print("original:", *m.smiles, sep="\n", end="\n<<<<<<\n")
-    for mutated in islice(removeAtom(m), 5):
+    for mutated in islice(addAtom(m), 5):
         print(*mutated.smiles, sep="\n")
     print("\n")
     # for j in range(i):
