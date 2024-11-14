@@ -1,5 +1,6 @@
 from typing import Generator
 from rdkit import Chem
+import random as rnd
 
 import numpy as np
 
@@ -22,9 +23,12 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
     #               C  N  P   O  S
     arom_replace = [6, 7, 15, 8, 16]
     mutations = 0
-    while mutations < MAX_MUTATIONS:
-        max_len = mol.GetNumAtoms()
-        atomi = np.random.randint(0, max_len)
+    max_len = mol.GetNumAtoms()
+    indices = list(range(max_len))
+    while mutations < MAX_MUTATIONS and len(indices) > 0:
+        print(f"Mutations: {mutations}")
+        print(f"Indices: {indices}")
+        atomi = rnd.choice(indices)
         atom = mol.GetAtomWithIdx(atomi)
 
         valence = atom.GetExplicitValence()
@@ -34,6 +38,8 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
             elif valence == 2:
                 new_atomic_num_index = np.random.randint(1, 5)
             else:
+                indices.remove(atomi)
+                print(f"Invalid valence: {atomi}")
                 continue
 
             new_atom = Chem.Atom(arom_replace[new_atomic_num_index])
@@ -49,6 +55,8 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
             elif valence == 1:
                 new_atomic_num_index = np.random.randint(0, 10)
             else:
+                indices.remove(atomi)
+                print(f"Invalid valence 2: {atomi}")
                 continue
 
             mol.ReplaceAtom(atomi, Chem.Atom(normal_replace[new_atomic_num_index]))
@@ -86,14 +94,14 @@ def removeAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
 
 
 def addAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
-    BRANCHING_CHANCE = 0.5
+    BRANCHING_CHANCE = 0.2
     MUTATION_ATOMS = ["C", "B", "N", "P", "O", "S", "Cl", "Br", "[Mg]"]
     while True:
         out_smis: list[str] = []
         for lexems in entry.lexems:
             successful = False
             n = len(lexems)
-            for tries in range(MAX_MUTATION_TRIES):
+            for _ in range(MAX_MUTATION_TRIES):
                 i: int = np.random.randint(0, n)
                 depth = depthOfLexem(lexems[i])
                 branch = np.random.random() < BRANCHING_CHANCE
