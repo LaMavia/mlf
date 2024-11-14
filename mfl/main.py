@@ -3,11 +3,15 @@ from pathlib import Path
 from rdkit import logging
 from logging import Logger
 from rdkit.rdBase import DisableLog
+from argparse import ArgumentParser
 
 from mfl.csa import CSA
 
 logger = Logger("mlf", logging.DEBUG)
 DisableLog("rdApp.*")
+
+parser = ArgumentParser()
+# parser.add_argument()
 
 
 root = Path(dirname(__file__)) / ".."

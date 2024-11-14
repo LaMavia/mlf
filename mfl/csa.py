@@ -57,9 +57,9 @@ def calculateDistances(
 
 
 class CSA:
-    MAX_ADDED = 50
-    MAX_REPLACED = 50
-    MAX_REMOVED = 50
+    MAX_ADDED = 100
+    MAX_REPLACED = 100
+    MAX_REMOVED = 100
 
     GROUP_DEL = "&"
 
@@ -97,20 +97,11 @@ class CSA:
         self, a: BankEntry, b: BankEntry
     ) -> Generator[list[str], None, None]:
         for crossed in crossMolecules(a, b):
-            i = 0
             for added in islice(addAtom(crossed), CSA.MAX_ADDED):
-                i += 1
-                print(f"Add: {i}")
                 yield sorted(canon(serialize(_)) for _ in added.lexems)
-            i = 0
             for replaced in islice(replaceAtom(crossed), CSA.MAX_REPLACED):
-                i += 1
-                print(f"replace {i}")
                 yield sorted(canon(serialize(_)) for _ in replaced.lexems)
-            i = 0
             for removed in islice(removeAtom(crossed), CSA.MAX_REPLACED):
-                i += 1
-                print(f"Remove {i}")
                 yield sorted(canon(serialize(_)) for _ in removed.lexems)
 
     @staticmethod

@@ -18,8 +18,8 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
     Modified from https://github.com/duaibeom/MolFinder/blob/e946cacc7fd13b4f457b22b7ee16645b98464360/bin/ModSMI.py#L235-L303
     """
 
-    #                 C  B  N  P   O  S   F  Cl  Br  I
-    normal_replace = [6, 5, 7, 15, 8, 16, 9, 17, 35, 53]
+    #                 C   N  P   O  S   F  Cl  I
+    normal_replace = [6, 15, 8, 16, 9, 17, 53]
     #               C  N  P   O  S
     arom_replace = [6, 7, 15, 8, 16]
     mutations = 0
@@ -32,6 +32,10 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
         atom = mol.GetAtomWithIdx(atomi)
 
         valence = atom.GetExplicitValence()
+        s = atom.GetSymbol().upper()
+        print(f"s={s}")
+        if s == "C" and rnd.random() < 0.99999:
+            continue
         if atom.GetIsAromatic():
             if valence == 3:
                 new_atomic_num_index = np.random.randint(0, 3)
@@ -49,11 +53,11 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
             if valence == 4:
                 new_atomic_num_index = np.random.randint(0, 1)
             elif valence == 3:
-                new_atomic_num_index = np.random.randint(0, 4)
+                new_atomic_num_index = np.random.randint(0, 2)
             elif valence == 2:
-                new_atomic_num_index = np.random.randint(0, 6)
+                new_atomic_num_index = np.random.randint(0, 4)
             elif valence == 1:
-                new_atomic_num_index = np.random.randint(0, 10)
+                new_atomic_num_index = np.random.randint(0, 7)
             else:
                 indices.remove(atomi)
                 print(f"Invalid valence 2: {atomi}")
@@ -95,7 +99,7 @@ def removeAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
 
 def addAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
     BRANCHING_CHANCE = 0.2
-    MUTATION_ATOMS = ["C", "B", "N", "P", "O", "S", "Cl", "Br", "[Mg]"]
+    MUTATION_ATOMS = ["C"] * 50 + ["N", "P", "O", "S", "Cl"]
     while True:
         out_smis: list[str] = []
         for lexems in entry.lexems:

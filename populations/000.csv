@@ -1,3 +1,5 @@
 SMILES,groups,score
-CNC(=O)CCCCCNC(=O)C1=CC(=O)C(=CN1O)ON([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CNC(=O)CCCCCNC(=O)C1=CC(=O)C(=CN1O)O&[H-3],0
-CNC(=O)C1=CC(=O)C(=CN1O)ON([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CNC(=O)C1=CC(=O)C(=CN1O)O&[H-3],0
+CCCCNCN([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CCCCNC&[H-3],0
+CCCCCNCN([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CCCCCNC&[H-3],0
+CCOCCOCCNCN([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CCOCCOCCNC&[H-3],0
+CC12CC3CC(CC(C3)C1)C2N([H-3])Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1,CC12CC3CC(CC(C3)C1)C2&[H-3],0
