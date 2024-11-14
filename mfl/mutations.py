@@ -111,7 +111,6 @@ def addAtom(entry: BankEntry) -> Generator[BankEntry, None, None]:
                 smi = serialize(lexems[:i] + mutation + lexems[i:])
                 if successful := isValid(smi):
                     out_smis.append(smi)
-                    print(tries)
                     break
             if not successful:
                 out_smis.append(serialize(lexems))

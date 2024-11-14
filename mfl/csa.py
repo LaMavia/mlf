@@ -57,9 +57,9 @@ def calculateDistances(
 
 
 class CSA:
-    MAX_ADDED = 20
-    MAX_REPLACED = 20
-    MAX_REMOVED = 20
+    MAX_ADDED = 200
+    MAX_REPLACED = 200
+    MAX_REMOVED = 200
 
     GROUP_DEL = "&"
 
@@ -119,10 +119,8 @@ class CSA:
             n = 0
             for groups in self._generateFromPair(best, entry):
                 n += 1
-                print(groups)
                 generated.add(CSA.GROUP_DEL.join(groups))
             if n == 0:
-                raise
                 for groups in self._generateFromPair(entry, best):
                     generated.add(CSA.GROUP_DEL.join(groups))
 
