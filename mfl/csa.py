@@ -133,13 +133,14 @@ class CSA:
                 for groups in self._generateFromPair(entry, best):
                     generated.add(CSA.GROUP_DEL.join(groups))
 
-        data: dict[str, list[str]] = {"SMILES": [], "groups": []}
+        data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
         for group_string in generated:
             groups = group_string.split(CSA.GROUP_DEL)
             smiles = CSA._groupsToSmile(self.template_raws, groups)
             if isValid(smiles):
                 data["groups"].append(group_string)
                 data["SMILES"].append(smiles)
+                data["score"].append("0")
 
         gen_num = f"{self.round}".rjust(3, "0")
         df = pd.DataFrame(data)
