@@ -1,10 +1,15 @@
 from rdkit import Chem
-from rdkit.Chem import Descriptors
 
 
 def isValid(s: str) -> bool:
-    m = Chem.MolFromSmiles(s)
-    return m is not None
+    try:
+        m = Chem.MolFromSmiles(s)
+        if m is None:
+            return False
+        Chem.SanitizeMol(m)
+        return True
+    except Exception:
+        return False
 
 
 def canon(s: str) -> str:

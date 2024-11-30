@@ -26,14 +26,11 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
     max_len = mol.GetNumAtoms()
     indices = list(range(max_len))
     while mutations < MAX_MUTATIONS and len(indices) > 0:
-        print(f"Mutations: {mutations}")
-        print(f"Indices: {indices}")
         atomi = rnd.choice(indices)
         atom = mol.GetAtomWithIdx(atomi)
 
         valence = atom.GetExplicitValence()
         s = atom.GetSymbol().upper()
-        print(f"s={s}")
         if s == "C" and rnd.random() < 0.99999:
             continue
         if atom.GetIsAromatic():
@@ -43,7 +40,6 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
                 new_atomic_num_index = np.random.randint(1, 5)
             else:
                 indices.remove(atomi)
-                print(f"Invalid valence: {atomi}")
                 continue
 
             new_atom = Chem.Atom(arom_replace[new_atomic_num_index])
@@ -60,7 +56,6 @@ def _replaceAtomAux(mol: Chem.RWMol) -> Generator[Chem.RWMol, None, None]:
                 new_atomic_num_index = np.random.randint(0, 7)
             else:
                 indices.remove(atomi)
-                print(f"Invalid valence 2: {atomi}")
                 continue
 
             mol.ReplaceAtom(atomi, Chem.Atom(normal_replace[new_atomic_num_index]))

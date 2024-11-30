@@ -1,4 +1,4 @@
-from itertools import islice
+from itertools import chain, islice
 from typing import Generator
 from rdkit import Chem
 from rdkit.DataStructs import TanimotoSimilarity
@@ -10,7 +10,7 @@ import pandas as pd
 # import random as rnd
 
 from mfl.cross import crossMolecules
-from mfl.lexer import serialize
+from mfl.lexer import ATOMS, Lexem, isDigit, serialize
 from mfl.mutations import addAtom, removeAtom, replaceAtom
 from mfl.utils import canon, isValid
 
@@ -57,10 +57,6 @@ def calculateDistances(
 
 
 class CSA:
-    MAX_ADDED = 100
-    MAX_REPLACED = 100
-    MAX_REMOVED = 100
-
     GROUP_DEL = "&"
 
     def __init__(
@@ -72,6 +68,10 @@ class CSA:
         DCut: float | None,
         template: str,
         seed_size: int,
+        max_added: int,
+        max_removed: int,
+        max_replaced: int,
+        max_crossed: int,
     ) -> None:
         """
         Population file format (csv): SMILES, groups(string[&]), score
@@ -83,26 +83,35 @@ class CSA:
         self.DCut = DCut
         self.template_raws = template.split("?")
         self.seed_size = seed_size
+        self.max_added = max_added
+        self.max_removed = max_removed
+        self.max_replaced = max_replaced
+        self.max_crossed = max_crossed
 
         self.population = self._calcPopulation(pd.read_csv(last_generation_file_path))
 
     def _calcPopulation(self, df: pd.DataFrame) -> list[BankEntry]:
         df["score"] = pd.to_numeric(df["score"], errors="coerce")
-        # df.drop_duplicates(subset=["groups"], inplace=True)
         df.sort_values(by=["score"], ascending=False, inplace=True)
 
         return [BankEntry(groups.split(CSA.GROUP_DEL)) for groups in df["groups"]]
 
+    @staticmethod
+    def _canonLexems(lexems: list[list[Lexem]]) -> list[str]:
+        return sorted(canon(serialize(_)) for _ in lexems)
+
     def _generateFromPair(
         self, a: BankEntry, b: BankEntry
     ) -> Generator[list[str], None, None]:
-        for crossed in crossMolecules(a, b):
-            for added in islice(addAtom(crossed), CSA.MAX_ADDED):
-                yield sorted(canon(serialize(_)) for _ in added.lexems)
-            for replaced in islice(replaceAtom(crossed), CSA.MAX_REPLACED):
-                yield sorted(canon(serialize(_)) for _ in replaced.lexems)
-            for removed in islice(removeAtom(crossed), CSA.MAX_REPLACED):
-                yield sorted(canon(serialize(_)) for _ in removed.lexems)
+        for crossed in islice(crossMolecules(a, b), self.max_crossed):
+            yield CSA._canonLexems(crossed.lexems)
+
+            for added in islice(addAtom(crossed), self.max_added):
+                yield CSA._canonLexems(added.lexems)
+            for replaced in islice(replaceAtom(crossed), self.max_replaced):
+                yield CSA._canonLexems(replaced.lexems)
+            for removed in islice(removeAtom(crossed), self.max_removed):
+                yield CSA._canonLexems(removed.lexems)
 
     @staticmethod
     def _groupsToSmile(template_raws: list[str], groups: list[str]) -> str:
@@ -119,23 +128,52 @@ class CSA:
             n = 0
             for groups in self._generateFromPair(best, entry):
                 n += 1
+                print(groups)
                 generated.add(CSA.GROUP_DEL.join(groups))
             if n == 0:
                 for groups in self._generateFromPair(entry, best):
                     generated.add(CSA.GROUP_DEL.join(groups))
 
         data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
-        for group_string in generated:
+        for group_string in chain(
+            [CSA.GROUP_DEL.join(CSA._canonLexems(best.lexems))], generated
+        ):
             groups = group_string.split(CSA.GROUP_DEL)
             smiles = CSA._groupsToSmile(self.template_raws, groups)
+            print(smiles)
             if isValid(smiles):
                 data["groups"].append(group_string)
                 data["SMILES"].append(smiles)
-                data["score"].append("0")
+                data["score"].append(str(CSA._carbonScore(smiles)))
 
         gen_num = f"{self.round}".rjust(3, "0")
         df = pd.DataFrame(data)
+        df.sort_values(by=["score"], ascending=False, inplace=True)
         df.to_csv(self.population_dir / f"{gen_num}.csv", index=False)
+
+    @staticmethod
+    def _carbonScore(s: str) -> float:
+        carbons = 0.0
+        other = 0.0
+
+        i = 0
+        while i < len(s):
+            c = s[i]
+            if c not in ATOMS:
+                i += 1
+                continue
+            if c == "c":
+                carbons += 1
+            elif c == "C" and i < len(s) - 1 and s[i + 1] == "l":
+                other += 1
+            elif c == "C":
+                carbons += 1
+            else:
+                other += 1
+
+            i += 1
+
+        return carbons / (carbons + other)
 
     @staticmethod
     def genInitial(template_raws: list[str], groups: list[list[str]], out: Path):
@@ -143,9 +181,10 @@ class CSA:
         for gs in groups:
             smiles = CSA._groupsToSmile(template_raws=template_raws, groups=gs)
             if isValid(smiles):
+                print(smiles)
                 data["groups"].append(CSA.GROUP_DEL.join(gs))
                 data["SMILES"].append(smiles)
-                data["score"].append("0")
+                data["score"].append(str(CSA._carbonScore(smiles)))
             else:
                 raise ValueError(f"Fail to create an entry for {gs}")
 

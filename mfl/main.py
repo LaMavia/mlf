@@ -1,4 +1,3 @@
-from os.path import dirname
 from pathlib import Path
 from rdkit import logging
 from logging import Logger
@@ -11,20 +10,31 @@ logger = Logger("mlf", logging.DEBUG)
 DisableLog("rdApp.*")
 
 parser = ArgumentParser()
-# parser.add_argument()
+parser.add_argument("-p", "--population", type=str, required=True)
+parser.add_argument("-d", "--out-dir", type=str, required=True)
+parser.add_argument("-r", "--round", type=int, required=True)
+parser.add_argument("-s", "--seed-size", type=int)
+parser.add_argument("--max-added", type=int, default=100)
+parser.add_argument("--max-replaced", type=int, default=100)
+parser.add_argument("--max-removed", type=int, default=100)
+parser.add_argument("--max-crossed", type=int, default=100)
 
+args = parser.parse_args()
 
-root = Path(dirname(__file__)) / ".."
 template: str = "?N(?)Cc1ccc(CNC(=O)c2csc3ncNc(=O)c23)cc1"
 
 csa = CSA(
-    population_dir=root / "populations",
-    round=1,
-    last_generation_file_path=root / "populations" / "000.csv",
+    population_dir=Path(args.out_dir),
+    round=args.round,
+    last_generation_file_path=Path(args.population),
     Rd=0.98,
     DCut=1,
     template=template,
-    seed_size=600,
+    seed_size=args.seed_size,
+    max_added=args.max_added,
+    max_replaced=args.max_replaced,
+    max_removed=args.max_removed,
+    max_crossed=args.max_crossed,
 )
 
 csa.generateNextPopulation()
