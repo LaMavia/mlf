@@ -13,6 +13,10 @@
           zlib
           glib
           libGL
+          xorg.libXrender
+          xorg.libX11
+          xorg.libXext
+          expat
         ];
 
         NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [

@@ -1,100 +1,219 @@
 from itertools import chain, islice
-from typing import Generator
+import json
+from typing import Generator, Iterable
 from rdkit import Chem
-from rdkit.DataStructs import TanimotoSimilarity
+from rdkit.DataStructs import SparseBitVect, TanimotoSimilarity
 from mfl.bank import BankEntry
 import numpy as np
 import numpy.typing as npt
 from pathlib import Path
 import pandas as pd
+
 # import random as rnd
+from collections import OrderedDict
 
 from mfl.cross import crossMolecules
-from mfl.lexer import ATOMS, Lexem, isDigit, serialize
-from mfl.mutations import addAtom, removeAtom, replaceAtom
+from mfl.lexer import ATOMS, BONDS, Lexem, isDigit, serialize
+from mfl.mutations import addAtom, changeBond, removeAtom, replaceAtom
 from mfl.utils import canon, isValid
 
-# SMILES = [
-#     "OCCc1c(C)[n+](cs1)Cc2cnc(C)nc2N",
-#     "[Cu+2].[O-]S(=O)(=O)[O-]",
-#     "O=Cc1ccc(O)c(OC)c1",
-#     "CCc(c1)ccc2[n+]1ccc3c2[nH]c4c3cccc4",
-#     "CN1CCC[C@H]1c2cccnc2",
-#     r"CCC[C@@H](O)CC\C=C\C=C\C#CC#C\C=C\CO",
-#     r"CCC[C@@H](O)CC/C=C/C=C/C#CC#C/C=C/CO",
-#     r"OC[C@@H](O1)[C@@H](O)[C@H](O)[C@@H](O)[C@H](O)1",
-#     r"OC[C@@H](O1)[C@@H](O)[C@H](O)[C@@H]2[C@@H]1c3c(O)c(OC)c(O)cc3C(=O)O2",
-#     r"CC(C)(O1)C[C@@H](O)[C@@]1(O2)[C@@H](C)[C@@H]3CC=C4[C@]3(C2)C(=O)C[C@H]5[C@H]4CC[C@@H](C6)[C@]5(C)Cc(n7)c6nc(C[C@@]89(C))c7C[C@@H]8CC[C@@H]%10[C@@H]9C[C@@H](O)[C@@]%11(C)C%10=C[C@H](O%12)[C@]%11(O)[C@H](C)[C@]%12(O%13)[C@H](O)C[C@@]%13(C)CO",
-# ]
+
+# def calculateDistances(
+#     bank: list[BankEntry],
+# ) -> tuple[npt.NDArray[np.float64], np.float64]:
+#     """
+#     Takes the current bank of molecules, and returns their distances, and the average distance
+#     """
+#     n = len(bank)
+#     fingerprints = np.array(
+#         [[Chem.RDKFingerprint(mol) for mol in m.mols] for m in bank]
+#     )
+#     sum_distances = np.zeros_like(fingerprints)
+#     mol_range = range(fingerprints.shape[1])
 #
+#     for i in range(n):
+#         for j in range(i):
+#             for k in mol_range:
+#                 d = 1 - TanimotoSimilarity(fingerprints[i, k], fingerprints[j, k])
+#                 sum_distances[i, k] += d
+#                 sum_distances[j, k] += d
 #
-# def initBank() -> list[BankEntry]:
-#     return [BankEntry([s]) for s in SMILES]
-#
+#     return sum_distances / (n - 1), np.mean(sum_distances) / n
 
 
-def calculateDistances(
-    bank: list[BankEntry],
-) -> tuple[npt.NDArray[np.float64], np.float64]:
-    """
-    Takes the current bank of molecules, and returns their distances, and the average distance
-    """
-    n = len(bank)
-    fingerprints = np.array(
-        [[Chem.RDKFingerprint(mol) for mol in m.mols] for m in bank]
-    )
-    sum_distances = np.zeros_like(fingerprints)
-    mol_range = range(fingerprints.shape[1])
+def calculateAvgDistance(df: pd.DataFrame) -> float:
+    fingerprints = [
+        Chem.RDKFingerprint(Chem.MolFromSmiles(r["SMILES"])) for _, r in df.iterrows()
+    ]
+    n = len(fingerprints)
 
+    dist: float = 0.0
     for i in range(n):
-        for j in range(i):
-            for k in mol_range:
-                d = 1 - TanimotoSimilarity(fingerprints[i, k], fingerprints[j, k])
-                sum_distances[i, k] += d
-                sum_distances[j, k] += d
+        for j in range(i + 1, n):
+            dist += 1 - TanimotoSimilarity(fingerprints[i], fingerprints[j])
 
-    return sum_distances / (n - 1), np.mean(sum_distances) / n
+    return dist / n
+
+
+def itFst[A](it: Iterable[A]) -> A | None:
+    for r in it:
+        return r
 
 
 class CSA:
     GROUP_DEL = "&"
+    ROUND_OFFSET = 3
 
     def __init__(
         self,
         population_dir: Path,
         round: int,
         last_generation_file_path: Path,
+        meta_file_path: Path,
         Rd: float,
-        DCut: float | None,
         template: str,
         seed_size: int,
         max_added: int,
         max_removed: int,
         max_replaced: int,
         max_crossed: int,
+        n_bank: int,
     ) -> None:
         """
         Population file format (csv): SMILES, groups(string[&]), score
         Template - string with `?` used as placeholders
         """
+        df = pd.read_csv(last_generation_file_path)
+        try:
+            with open(meta_file_path) as f:
+                self.meta = json.load(f)
+        except Exception:
+            print(f"[Meta] Failed to open/parse «{meta_file_path}», using default meta")
+            self.meta = {}
+
+        DCut = self.meta.get("dcut")
+        if DCut is None or round < CSA.ROUND_OFFSET:
+            DCut = calculateAvgDistance(df) / 2
+            self.meta["dcut"] = DCut
+
+        self.meta_file_path = meta_file_path
         self.population_dir = population_dir
         self.round = round
         self.Rd = Rd
-        self.DCut = DCut
+        self.DCut = max(DCut * Rd**5, DCut * Rd ** (max(round - CSA.ROUND_OFFSET, 0)))
         self.template_raws = template.split("?")
         self.seed_size = seed_size
         self.max_added = max_added
         self.max_removed = max_removed
         self.max_replaced = max_replaced
         self.max_crossed = max_crossed
+        self.n_bank = n_bank
 
-        self.population = self._calcPopulation(pd.read_csv(last_generation_file_path))
+        self.population = self._calcPopulation(df)
 
-    def _calcPopulation(self, df: pd.DataFrame) -> list[BankEntry]:
-        df["score"] = pd.to_numeric(df["score"], errors="coerce")
+    def _sortPopulation(self, df: pd.DataFrame) -> pd.DataFrame:
         df.sort_values(by=["score"], ascending=False, inplace=True)
 
-        return [BankEntry(groups.split(CSA.GROUP_DEL)) for groups in df["groups"]]
+        return df
+
+    def _mapPopulation(self, df: pd.DataFrame) -> pd.DataFrame:
+        df["score"] = pd.to_numeric(df["score"], errors="coerce")
+        df = self._sortPopulation(df)
+
+        return df
+
+    def _preprocessRow(self, row: pd.Series) -> dict:
+        return {
+            **row,
+            "mol": (mol := Chem.MolFromSmiles(row["SMILES"])),
+            "fingerprint": Chem.RDKFingerprint(mol),
+        }
+
+    def _initBank(self, df: pd.DataFrame) -> tuple[dict[str, dict], pd.DataFrame]:
+        df = df.sample(frac=1).reset_index(drop=True)
+        initial_rows = df.iloc[: self.n_bank]
+        remaining_rows = df.iloc[self.n_bank :]
+
+        return {
+            row["SMILES"]: self._preprocessRow(row)
+            for _, row in initial_rows.iterrows()
+        }, remaining_rows
+
+    def _nearestNeighbour(
+        self, bank: dict[str, dict], fingerprint: SparseBitVect
+    ) -> tuple[dict, float]:
+        nn = itFst(bank.values())
+        assert nn is not None
+        min_dist = 1 - TanimotoSimilarity(nn["fingerprint"], fingerprint)
+
+        for e in bank.values():
+            dist = TanimotoSimilarity(e["fingerprint"], fingerprint)
+            if dist <= min_dist:
+                nn = e
+                min_dist = dist
+
+        return nn, min_dist
+
+    def _getBankMin(self, bank: dict) -> dict:
+        mn: dict | None = None
+        for r in bank.values():
+            if mn is None or r["score"] <= mn["score"]:
+                mn = r
+
+        assert mn is not None
+        return mn
+
+    def _calcPopulation(self, df: pd.DataFrame) -> list[BankEntry]:
+        """
+        # min_score, min_mol
+        if mol.score < min_score:
+            discard mol
+            continue
+
+        (nn, dist) = nearest_neighbour(bank, mol)
+        if dist < self.DCut:
+            if nn.score > mol.score:
+                discard mol
+                continue
+            replace(bank, nn, mol)
+        elif dist > self.DCut:
+            replace(bank, min_mol, mol)
+            min_mol = mol
+            min_score = mol.score
+        """
+        dcut = self.DCut
+        assert dcut is not None
+        df = self._mapPopulation(df)
+
+        bank, remaining_rows = self._initBank(df)
+        min_mol = self._getBankMin(bank)
+
+        for _, r in remaining_rows.iterrows():
+            if (s := r["score"]) < min_mol["score"]:
+                print(f"Score too low: {s}")
+                continue
+
+            r = self._preprocessRow(r)
+            nn, dist = self._nearestNeighbour(bank, r["fingerprint"])
+            if dist < dcut:
+                print(f"dist < cut: {dist} < {dcut}", end=": ")
+                if nn["score"] > r["score"]:
+                    print("worse score, discarding")
+                    continue
+                print(f"""better score: {nn['SMILES']} -> {r['SMILES']}""")
+                del bank[nn["SMILES"]]
+                bank[r["SMILES"]] = r
+                if nn["SMILES"] == min_mol["SMILES"]:
+                    min_mol = r
+            elif dist > dcut:
+                print(f"replacing min: {min_mol['SMILES']} -> {r['SMILES']}")
+                del bank[min_mol["SMILES"]]
+                bank[r["SMILES"]] = r
+                min_mol = r
+
+        print("Bank size:", len(bank))
+        bank = sorted(bank.values(), key=lambda r: r["score"], reverse=True)
+        return [BankEntry(row["groups"].split(CSA.GROUP_DEL)) for row in bank]
 
     @staticmethod
     def _canonLexems(lexems: list[list[Lexem]]) -> list[str]:
@@ -112,6 +231,8 @@ class CSA:
                 yield CSA._canonLexems(replaced.lexems)
             for removed in islice(removeAtom(crossed), self.max_removed):
                 yield CSA._canonLexems(removed.lexems)
+            for bonded in islice(changeBond(crossed), self.max_replaced):
+                yield CSA._canonLexems(bonded.lexems)
 
     @staticmethod
     def _groupsToSmile(template_raws: list[str], groups: list[str]) -> str:
@@ -128,7 +249,6 @@ class CSA:
             n = 0
             for groups in self._generateFromPair(best, entry):
                 n += 1
-                print(groups)
                 generated.add(CSA.GROUP_DEL.join(groups))
             if n == 0:
                 for groups in self._generateFromPair(entry, best):
@@ -140,16 +260,20 @@ class CSA:
         ):
             groups = group_string.split(CSA.GROUP_DEL)
             smiles = CSA._groupsToSmile(self.template_raws, groups)
-            print(smiles)
             if isValid(smiles):
                 data["groups"].append(group_string)
                 data["SMILES"].append(smiles)
-                data["score"].append(str(CSA._carbonScore(smiles)))
+                data["score"].append(str(CSA._bondScore(smiles)))
 
         gen_num = f"{self.round}".rjust(3, "0")
         df = pd.DataFrame(data)
         df.sort_values(by=["score"], ascending=False, inplace=True)
         df.to_csv(self.population_dir / f"{gen_num}.csv", index=False)
+        self._saveMeta()
+
+    def _saveMeta(self):
+        with open(self.meta_file_path, "w") as f:
+            json.dump(self.meta, f)
 
     @staticmethod
     def _carbonScore(s: str) -> float:
@@ -176,15 +300,30 @@ class CSA:
         return carbons / (carbons + other)
 
     @staticmethod
+    def _bondScore(s: str) -> float:
+        count = 1.0
+        sum = 0.0
+        map = {"=": 2, "#": 4, "$": 8, ":": 1.5}
+
+        for c in s:
+            if c in BONDS:
+                sum += map.get(c, 0)
+                count += 1
+            if c in ATOMS:
+                sum += 1
+                count += 1
+
+        return sum / count
+
+    @staticmethod
     def genInitial(template_raws: list[str], groups: list[list[str]], out: Path):
         data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
         for gs in groups:
             smiles = CSA._groupsToSmile(template_raws=template_raws, groups=gs)
             if isValid(smiles):
-                print(smiles)
                 data["groups"].append(CSA.GROUP_DEL.join(gs))
                 data["SMILES"].append(smiles)
-                data["score"].append(str(CSA._carbonScore(smiles)))
+                data["score"].append(str(CSA._bondScore(smiles)))
             else:
                 raise ValueError(f"Fail to create an entry for {gs}")
 

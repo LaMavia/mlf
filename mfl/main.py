@@ -11,6 +11,7 @@ DisableLog("rdApp.*")
 
 parser = ArgumentParser()
 parser.add_argument("-p", "--population", type=str, required=True)
+parser.add_argument("-m", "--meta-path", type=str, required=True)
 parser.add_argument("-d", "--out-dir", type=str, required=True)
 parser.add_argument("-r", "--round", type=int, required=True)
 parser.add_argument("-s", "--seed-size", type=int)
@@ -18,6 +19,7 @@ parser.add_argument("--max-added", type=int, default=100)
 parser.add_argument("--max-replaced", type=int, default=100)
 parser.add_argument("--max-removed", type=int, default=100)
 parser.add_argument("--max-crossed", type=int, default=100)
+parser.add_argument("--bank-size", type=int, default=100)
 
 args = parser.parse_args()
 
@@ -28,13 +30,14 @@ csa = CSA(
     round=args.round,
     last_generation_file_path=Path(args.population),
     Rd=0.98,
-    DCut=1,
+    meta_file_path=args.meta_path,
     template=template,
     seed_size=args.seed_size,
     max_added=args.max_added,
     max_replaced=args.max_replaced,
     max_removed=args.max_removed,
     max_crossed=args.max_crossed,
+    n_bank=args.bank_size,
 )
 
 csa.generateNextPopulation()

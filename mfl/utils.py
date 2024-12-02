@@ -6,7 +6,7 @@ def isValid(s: str) -> bool:
         m = Chem.MolFromSmiles(s)
         if m is None:
             return False
-        Chem.SanitizeMol(m)
+        Chem.SanitizeMol(m, sanitizeOps=Chem.SANITIZE_ALL)
         return True
     except Exception:
         return False
