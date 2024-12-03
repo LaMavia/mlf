@@ -78,6 +78,8 @@ class CSA:
         max_replaced: int,
         max_crossed: int,
         n_bank: int,
+        dummy_score: bool,
+        double_cross: bool,
     ) -> None:
         """
         Population file format (csv): SMILES, groups(string[&]), score
@@ -108,6 +110,8 @@ class CSA:
         self.max_replaced = max_replaced
         self.max_crossed = max_crossed
         self.n_bank = n_bank
+        self.dummy_score = dummy_score
+        self.double_cross = double_cross
 
         self.population = self._calcPopulation(df)
 
@@ -222,7 +226,9 @@ class CSA:
     def _generateFromPair(
         self, a: BankEntry, b: BankEntry
     ) -> Generator[list[str], None, None]:
-        for a, b in [(a, b), (b, a)]:
+        pairs = [(a, b), (b, a)] if self.double_cross else [(a, b)]
+
+        for a, b in pairs:
             for crossed in islice(crossMolecules(a, b), self.max_crossed):
                 yield CSA._canonLexems(crossed.lexems)
 
@@ -251,9 +257,9 @@ class CSA:
             for groups in self._generateFromPair(best, entry):
                 n += 1
                 generated.add(CSA.GROUP_DEL.join(groups))
-            # if n == 0:
-            #     for groups in self._generateFromPair(entry, best):
-            #         generated.add(CSA.GROUP_DEL.join(groups))
+            if n == 0 and not self.double_cross:
+                for groups in self._generateFromPair(entry, best):
+                    generated.add(CSA.GROUP_DEL.join(groups))
 
         data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
         for group_string in chain(
@@ -264,7 +270,9 @@ class CSA:
             if isValid(smiles):
                 data["groups"].append(group_string)
                 data["SMILES"].append(smiles)
-                data["score"].append(str(CSA._bondScore(smiles)))
+                data["score"].append(
+                    str(CSA._bondScore(smiles)) if self.dummy_score else ""
+                )
 
         gen_num = f"{self.round}".rjust(3, "0")
         df = pd.DataFrame(data)
@@ -318,14 +326,16 @@ class CSA:
         return sum / count
 
     @staticmethod
-    def genInitial(template_raws: list[str], groups: list[list[str]], out: Path):
+    def genInitial(
+        template_raws: list[str], groups: list[list[str]], out: Path, dummy_score: bool
+    ):
         data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
         for gs in groups:
             smiles = CSA._groupsToSmile(template_raws=template_raws, groups=gs)
             if isValid(smiles):
                 data["groups"].append(CSA.GROUP_DEL.join(gs))
                 data["SMILES"].append(smiles)
-                data["score"].append(str(CSA._bondScore(smiles)))
+                data["score"].append(str(CSA._bondScore(smiles)) if dummy_score else "")
             else:
                 raise ValueError(f"Fail to create an entry for {gs}")
 

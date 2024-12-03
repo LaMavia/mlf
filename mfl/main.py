@@ -15,6 +15,8 @@ parser.add_argument("-m", "--meta-path", type=str, required=True)
 parser.add_argument("-d", "--out-dir", type=str, required=True)
 parser.add_argument("-r", "--round", type=int, required=True)
 parser.add_argument("-s", "--seed-size", type=int)
+parser.add_argument("--dummy-score", action="store_true")
+parser.add_argument("--double-cross", action="store_true")
 parser.add_argument("--max-added", type=int, default=100)
 parser.add_argument("--max-replaced", type=int, default=100)
 parser.add_argument("--max-removed", type=int, default=100)
@@ -38,6 +40,8 @@ csa = CSA(
     max_removed=args.max_removed,
     max_crossed=args.max_crossed,
     n_bank=args.bank_size,
+    dummy_score=args.dummy_score,
+    double_cross=args.double_cross,
 )
 
 csa.generateNextPopulation()

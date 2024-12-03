@@ -24,4 +24,5 @@ CSA.genInitial(
         ["CCOCCOCCNC", "[H-3]"],
         ["CC12CC3CC(CC(C3)C1)C2", "[H-3]"],
     ],
+    dummy_score=True,
 )
