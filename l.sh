@@ -11,8 +11,10 @@ for it in $(seq 1 30); do
     --max-added 10 \
     --max-replaced 10 \
     --max-removed 10 \
-    --max-crossed 40 \
-    --bank-size 100
+    --max-crossed 20 \
+    --bank-size 20 \
+    --dummy-score \
+    --double-cross
 
   if test $? -ne 0; then
     exit 1
