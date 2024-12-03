@@ -222,17 +222,18 @@ class CSA:
     def _generateFromPair(
         self, a: BankEntry, b: BankEntry
     ) -> Generator[list[str], None, None]:
-        for crossed in islice(crossMolecules(a, b), self.max_crossed):
-            yield CSA._canonLexems(crossed.lexems)
+        for a, b in [(a, b), (b, a)]:
+            for crossed in islice(crossMolecules(a, b), self.max_crossed):
+                yield CSA._canonLexems(crossed.lexems)
 
-            for added in islice(addAtom(crossed), self.max_added):
-                yield CSA._canonLexems(added.lexems)
-            for replaced in islice(replaceAtom(crossed), self.max_replaced):
-                yield CSA._canonLexems(replaced.lexems)
-            for removed in islice(removeAtom(crossed), self.max_removed):
-                yield CSA._canonLexems(removed.lexems)
-            for bonded in islice(changeBond(crossed), self.max_replaced):
-                yield CSA._canonLexems(bonded.lexems)
+                for added in islice(addAtom(crossed), self.max_added):
+                    yield CSA._canonLexems(added.lexems)
+                for replaced in islice(replaceAtom(crossed), self.max_replaced):
+                    yield CSA._canonLexems(replaced.lexems)
+                for removed in islice(removeAtom(crossed), self.max_removed):
+                    yield CSA._canonLexems(removed.lexems)
+                for bonded in islice(changeBond(crossed), self.max_replaced):
+                    yield CSA._canonLexems(bonded.lexems)
 
     @staticmethod
     def _groupsToSmile(template_raws: list[str], groups: list[str]) -> str:
@@ -250,9 +251,9 @@ class CSA:
             for groups in self._generateFromPair(best, entry):
                 n += 1
                 generated.add(CSA.GROUP_DEL.join(groups))
-            if n == 0:
-                for groups in self._generateFromPair(entry, best):
-                    generated.add(CSA.GROUP_DEL.join(groups))
+            # if n == 0:
+            #     for groups in self._generateFromPair(entry, best):
+            #         generated.add(CSA.GROUP_DEL.join(groups))
 
         data: dict[str, list[str]] = {"SMILES": [], "groups": [], "score": []}
         for group_string in chain(
@@ -268,6 +269,7 @@ class CSA:
         gen_num = f"{self.round}".rjust(3, "0")
         df = pd.DataFrame(data)
         df.sort_values(by=["score"], ascending=False, inplace=True)
+        df.drop_duplicates(["SMILES"])
         df.to_csv(self.population_dir / f"{gen_num}.csv", index=False)
         self._saveMeta()
 
