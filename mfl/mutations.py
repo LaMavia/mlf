@@ -192,10 +192,8 @@ def changeBond(entry: BankEntry) -> Generator[BankEntry, None, None]:
                     Chem.SanitizeMol(modified_mol, sanitizeOps=Chem.SANITIZE_ALL)
                     smis.append(Chem.MolToSmiles(modified_mol))
                     successful = True
-                    print(f"[ChangeBond] SUCCESSFUL {type} -> {bt}")
                 except Exception:
-                    print(f"[ChangeBond] Bond {type} -> {bt} failed")
-
+                    pass
             if successful:
                 break
 
