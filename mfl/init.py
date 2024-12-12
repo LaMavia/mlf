@@ -25,9 +25,9 @@ CSA.genInitial(
         ["CCCC", "[H]"],
         ["CCCCC", "[H]"],
         ["CCCCCCCCCC", "[H]"],
-        ["CINCCCCCCCN", "[H]"],
-        ["CINCCCCCN", "[H]"],
-        ["CINCCCCN", "[H]"],
+        ["ClNCCCCCCCN", "[H]"],
+        ["ClNCCCCCN", "[H]"],
+        ["ClNCCCCN", "[H]"],
     ],
     dummy_score=True,
 )
